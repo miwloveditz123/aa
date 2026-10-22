@@ -118,7 +118,7 @@ local LocalPlayer = Players.LocalPlayer
 -- ==========================================
 local AF_CONFIG = {
     -- ⬇️⬇️⬇️ URL YANG DI-EXECUTE KALAU KARAKTER MATI (GANTI SENDIRI) ⬇️⬇️⬇️
-    ScriptUrl = "https://pastefy.app/4wUG01E6/raw",
+    ScriptUrl = "https://raw.githubusercontent.com/miwloveditz123/aa/refs/heads/main/BuyyerDika.txt",
 
     -- Menunggu berapa detik setelah mati sebelum execute
     ExecuteDelay = 2,
