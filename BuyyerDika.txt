@@ -1,16 +1,13 @@
 
 
 
--- ====================================================================
--- ]]
-
 -- ============================================================
 -- 🔧 KONFIGURASI
 -- ============================================================
 
 local CONFIG = {
     -- Script URL untuk auto-execute setelah rejoin
-    ScriptUrl = "https://pastefy.app/4wUG01E6/raw",
+    ScriptUrl = "https://raw.githubusercontent.com/miwloveditz123/aa/refs/heads/main/ww.lua",
     
     -- Game ID (PlaceId South Bronx)
     GameId = 10179538382,
