@@ -1,0 +1,497 @@
+
+
+
+-- ====================================================================
+-- ]]
+
+-- ============================================================
+-- 🔧 KONFIGURASI
+-- ============================================================
+
+local CONFIG = {
+    -- Script URL untuk auto-execute setelah rejoin
+    ScriptUrl = "https://pastefy.app/4wUG01E6/raw",
+    
+    -- Game ID (PlaceId South Bronx)
+    GameId = 10179538382,
+    
+    -- Auto Rejoin settings
+    AutoRejoinEnabled = true,
+    RejoinDelay = 3, -- Detik sebelum rejoin
+    AutoRejoinOnStart = true, -- LANGSUNG rejoin begitu script di-execute
+    StartRejoinDelay = 3, -- Detik nunggu sebelum rejoin pertama kali
+    
+    -- Auto Execute settings
+    AutoExecuteAfterRejoin = true,
+    ExecuteDelay = 15, -- Detik sebelum execute setelah rejoin
+    
+    -- Auto Play settings
+    MaxPlayAttempts = 5,
+    PlayRetryDelay = 1,
+}
+
+-- ============================================================
+-- 📦 SERVICES
+-- ============================================================
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LogService = game:GetService("LogService")
+local TeleportService = game:GetService("TeleportService")
+local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+local CoreGui = game:GetService("CoreGui")
+
+local LP = Players.LocalPlayer
+local PlayerGui = LP:WaitForChild("PlayerGui")
+
+-- ============================================================
+-- 1️⃣ AUTO CLICK PLAY
+-- ============================================================
+--[[
+FUNGSI: SetPlayButton()
+
+DESKRIPSI:
+  Cari tombol "Play" di IntroUI dan klik otomatis.
+  
+CARA KERJA:
+  1. Cari PlayerGui.IntroUI
+  2. Scan descendants cari ImageButton dengan nama "Play"
+  3. Coba 3 metode klik:
+     a) Fire() event
+     b) VirtualInputManager click (real mouse simulation)
+     c) getconnections: Fire() semua koneksi
+  
+RETURN:
+  true = berhasil / udah di klik
+  false = gagal
+  
+CATATAN:
+  - Function ini dijalanin sebelum script utama load
+  - Kalau IntroUI udah ilang, return true (udah di klik sebelumnya)
+  - Max attempt: 5x, delay 1 detik antar attempt
+]]
+
+local function SetPlayButton()
+    local LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then return false end
+    
+    local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not PlayerGui then return false end
+    
+    -- Cari IntroUI
+    local intro = PlayerGui:FindFirstChild("IntroUI")
+    if not intro then
+        -- IntroUI udah ilang = play button udah ke klik
+        return true
+    end
+    
+    -- Cari tombol Play
+    local playButton = nil
+    for _, obj in pairs(intro:GetDescendants()) do
+        if obj:IsA("ImageButton") and obj.Name == "Play" then
+            playButton = obj
+            break
+        end
+    end
+    
+    if not playButton then
+        return false
+    end
+    
+    -- METODE 1: Fire() event
+    pcall(function()
+        playButton.MouseButton1Click:Fire()
+    end)
+    
+    -- METODE 2: VirtualInputManager (real mouse click)
+    pcall(function()
+        local VIM = game:GetService("VirtualInputManager")
+        if VIM then
+            local pos = playButton.AbsolutePosition
+            local size = playButton.AbsoluteSize
+            if pos.X > 0 and pos.Y > 0 then
+                VIM:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
+                task.wait(0.05)
+                VIM:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
+            end
+        end
+    end)
+    
+    -- METODE 3: getconnections (execute semua listener)
+    pcall(function()
+        local conns = getconnections(playButton.MouseButton1Click)
+        if conns then
+            for _, conn in pairs(conns) do
+                conn:Fire()
+            end
+        end
+    end)
+    
+    task.wait(1)
+    return true
+end
+
+--[[
+FUNGSI: AutoClickPlay()
+
+DESKRIPSI:
+  Loop SetPlayButton() sampai berhasil (max 5x).
+  
+CARA KERJA:
+  - Loop max 5 kali
+  - Tiap attempt delay 1 detik
+  - Break kalau SetPlayButton return true
+  
+RETURN:
+  true = berhasil
+  false = gagal setelah 5 attempt
+]]
+
+local function AutoClickPlay()
+    local maxAttempts = CONFIG.MaxPlayAttempts
+    local delay = CONFIG.PlayRetryDelay
+    local attempts = 0
+    local success = false
+    
+    while attempts < maxAttempts do
+        local result = SetPlayButton()
+        if result then
+            success = true
+            break
+        end
+        attempts = attempts + 1
+        task.wait(delay)
+    end
+    
+    return success
+end
+
+-- ============================================================
+-- 2️⃣ AUTO EXECUTE
+-- ============================================================
+--[[
+FUNGSI: AutoExecute()
+
+DESKRIPSI:
+  Jalanin script utama setelah rejoin.
+  
+CARA KERJA:
+  1. Cek flag getgenv().FULLY_MS_AFTER_REJOIN
+  2. Kalau ada, delay 15 detik
+  3. Click Play button (via AutoClickPlay)
+  4. Tunggu 2 detik
+  5. Start main function (StartFullyFarm / custom)
+  6. Reset flag
+  
+CUSTOMIZE:
+  Ganti "StartFullyFarm()" di bawah dengan function utama lo.
+  Contoh: loadstring script utama, atau call function lain.
+]]
+
+local function AutoExecute()
+    task.wait(3)
+    
+    if getgenv().FULLY_MS_AFTER_REJOIN then
+        print("🔄 [AUTO-EXEC] Starting after rejoin...")
+        getgenv().FULLY_MS_AFTER_REJOIN = nil
+        
+        -- Click Play button
+        local clickAttempts = 0
+        while clickAttempts < 10 do
+            local success = SetPlayButton()
+            if success then break end
+            clickAttempts = clickAttempts + 1
+            task.wait(2)
+        end
+        
+        task.wait(2)
+        
+        -- ============================================
+        -- CALL MAIN FUNCTION DI SINI
+        -- ============================================
+        -- Ganti dengan function utama lo:
+        --   StartFullyFarm()
+        --   LoadMainScript()
+        --   dll
+        
+        if _G.StartFullyFarm then
+            _G.StartFullyFarm()
+        elseif _G.LoadMainScript then
+            _G.LoadMainScript()
+        end
+    else
+        print("📌 [AUTO-EXEC] Ready - Use F3 to open UI")
+    end
+end
+
+-- ============================================================
+-- 3️⃣ AUTO REJOIN
+-- ============================================================
+--[[
+FUNGSI: DoRejoin()
+
+DESKRIPSI:
+  Trigger rejoin ke server via TeleportService.
+  
+CARA KERJA:
+  1. Cek config AutoRejoinEnabled
+  2. Cek flag IsDeathTeleport (skip kalau death teleport legit)
+  3. Set flag FULLY_MS_AFTER_REJOIN = true
+  4. Setup queue_on_teleport (buat auto-execute setelah rejoin)
+  5. Trigger TeleportService:Teleport()
+  
+QUEUE_ON_TELEPORT:
+  Function ini bakal dijalanin di server baru.
+  Isinya: 
+    - Wait 30 detik
+    - Set flag FULLY_MS_AFTER_REJOIN
+    - Reset flag FULLY_MS_V1
+    - Load script utama dari URL
+  
+CATATAN:
+  - Function ini harus di-call saat DETECT kick/death
+  - Jangan panggil manual kecuali lo mau force rejoin
+]]
+
+local IsDeathTeleport = false
+
+local function MarkDeathTeleport()
+    IsDeathTeleport = true
+end
+
+_G.MarkDeathTeleport = MarkDeathTeleport
+
+local function DoRejoin(force)
+    if not CONFIG.AutoRejoinEnabled then return end
+    if getgenv().__BUYER_DOING_REJOIN then return end
+    
+    force = force == true
+    
+    -- Skip kalau death teleport (legit), kecuali force
+    if IsDeathTeleport and not force then 
+        IsDeathTeleport = false
+        return 
+    end
+    IsDeathTeleport = false
+    
+    getgenv().__BUYER_DOING_REJOIN = true
+    
+    print("🔄 [REJOIN] Rejoining..." .. (force and " (FORCED)" or ""))
+    
+    -- Set flag untuk auto-execute
+    getgenv().FULLY_MS_AFTER_REJOIN = true
+    
+    -- Queue script untuk jalanin setelah rejoin (anti-nested)
+    queue_on_teleport([[
+        if getgenv().__BUYER_QOT_ONCE then return end
+        getgenv().__BUYER_QOT_ONCE = true
+        pcall(function()
+            local noop=function() end
+            queue_on_teleport=noop; getgenv().queue_on_teleport=noop
+        end)
+        task.wait(15)
+        getgenv().FULLY_MS_AFTER_REJOIN = true
+        getgenv().FULLY_MS_V1 = nil
+        loadstring(game:HttpGet("]] .. CONFIG.ScriptUrl .. [["))()
+    ]])
+    
+    -- Trigger teleport
+    TeleportService:Teleport(CONFIG.GameId)
+end
+
+_G.ForceRejoin = function() DoRejoin(true) end
+_G.Rejoin = function() DoRejoin(true) end
+_G.DoRejoin = DoRejoin
+
+--[[
+FUNGSI: SetupDeathDetection()
+
+DESKRIPSI:
+  Setup death detection untuk trigger auto-rejoin saat player mati.
+  
+CARA KERJA:
+  1. Function helper OnCharacterAdded(char)
+  2. Wait Humanoid (max 5 detik)
+  3. Connect Humanoid.Died
+  4. Cek flag IsDeathTeleport, kalau false → trigger DoRejoin()
+  
+CATATAN:
+  - Function ini harus di-call manual atau via CharacterAdded
+  - Auto attach ke Character baru tiap respawn
+]]
+
+local function SetupDeathDetection()
+    local function OnCharacterAdded(char)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if not hum then return end
+        
+        hum.Died:Connect(function()
+            if IsDeathTeleport then
+                IsDeathTeleport = false
+                return
+            end
+            
+            print("💀 [REJOIN] Natural death detected! Rejoining...")
+            task.spawn(DoRejoin)
+        end)
+    end
+    
+    local char = LP.Character
+    if char then 
+        task.spawn(function() OnCharacterAdded(char) end) 
+    end
+    
+    LP.CharacterAdded:Connect(OnCharacterAdded)
+end
+
+--[[
+FUNGSI: SetupKickDetection()
+
+DESKRIPSI:
+  Setup kick detection untuk trigger auto-rejoin saat player di-kick.
+  
+CARA KERJA:
+  1. Listen LogService.MessageOut
+  2. Filter message dengan keyword:
+     - "Kicked"
+     - "Disconnected"
+     - "Idle"
+     - "Removed"
+     - "Connection lost"
+     - "Ban"
+  3. Kalau match → trigger DoRejoin()
+  
+CATATAN:
+  - Function ini deteksi dari console log
+  - Bisa juga pake game:GetService("Players").LocalPlayer.Kick = function() end
+    buat override Kick function (di-handle di anti-kick layer)
+]]
+
+local function SetupKickDetection()
+    task.spawn(function()
+        local conn
+        conn = LogService.MessageOut:Connect(function(msg, mtype)
+            if mtype == Enum.MessageType.MessageError then
+                if msg:find("Kicked") or msg:find("Disconnected") or msg:find("Idle") or 
+                   msg:find("Removed") or msg:find("Connection lost") or msg:find("Ban") then
+                    if conn then conn:Disconnect() end
+                    task.spawn(DoRejoin)
+                end
+            end
+        end)
+    end)
+end
+
+-- ============================================================
+-- 4️⃣ AUTO ANTI-AFK (BONUS)
+-- ============================================================
+--[[
+FUNGSI: SetupAntiAFK()
+
+DESKRIPSI:
+  Prevent idle kick dengan trigger activity tiap 60 detik.
+  
+CARA KERJA:
+  1. Loop tiap 60 detik
+  2. Call VirtualUser:CaptureController()
+  3. Call VirtualUser:ClickButton2()
+  
+CATATAN:
+  - Ini prevent "idle" kick (bukan disconnect)
+  - Kalau tetap kena kick, SetupKickDetection bakal trigger rejoin
+]]
+
+local function SetupAntiAFK()
+    task.spawn(function()
+        while true do
+            pcall(function()
+                game:GetService("VirtualUser"):CaptureController()
+                game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+            end)
+            task.wait(60)
+        end
+    end)
+end
+
+-- ============================================================
+-- 5️⃣ AUTO EXECUTE ON START
+-- ============================================================
+--[[
+DESKRIPSI:
+  Blok ini jalanin urutan startup otomatis saat script di-execute.
+
+URUTAN:
+  1. AutoClickPlay()      → Klik tombol Play di IntroUI
+  2. SetupAntiAFK()       → Anti idle kick
+  3. SetupDeathDetection()→ Detect death & trigger rejoin
+  4. SetupKickDetection() → Detect kick & trigger rejoin
+  5. AutoExecute()        → Jalanin main function kalau after-rejoin
+]]
+
+-- Jalankan di background (non-blocking)
+task.spawn(function()
+    -- Step 1: Auto Click Play
+    AutoClickPlay()
+    
+    -- Step 2: Anti AFK
+    SetupAntiAFK()
+    
+    -- Step 3: Death Detection
+    SetupDeathDetection()
+    
+    -- Step 4: Kick Detection
+    SetupKickDetection()
+    
+    -- Step 5: Auto Execute
+    AutoExecute()
+end)
+
+-- ============================================================
+-- 🔥 LANGSUNG REJOIN OTOMATIS (TANPA PENCET APA-APA)
+-- ============================================================
+-- Delay biar script utama & deteksi siap dulu, lalu langsung rejoin.
+task.spawn(function()
+    if CONFIG.AutoRejoinOnStart == false then return end
+    task.wait(CONFIG.StartRejoinDelay or 3)
+    print("🚀 [BUYER] Auto rejoin (tanpa pencet)...")
+    DoRejoin(true)
+end)
+
+-- F6 = FORCE REJOIN TANPA NUNGGU MATI/KICK
+pcall(function()
+    local UIS = game:GetService("UserInputService")
+    UIS.InputBegan:Connect(function(inp, gp)
+        if gp then return end
+        if inp.KeyCode == Enum.KeyCode.F6 then
+            print("[BUYER] F6 pressed -> FORCE REJOIN")
+            task.spawn(function() DoRejoin(true) end)
+        end
+    end)
+end)
+
+-- ============================================================
+-- 🔥 REGISTER GLOBAL FUNCTIONS
+-- ============================================================
+-- Biar bisa di-call dari script lain
+
+_G.AutoClickPlay = AutoClickPlay
+_G.DoRejoin = DoRejoin
+_G.Rejoin = function() DoRejoin(true) end
+_G.ForceRejoin = function() DoRejoin(true) end
+_G.MarkDeathTeleport = MarkDeathTeleport
+
+print("========================================")
+print("🚀 FULLY MS - CORE SYSTEM LOADED")
+print("========================================")
+print("✅ Auto Click Play: ACTIVE")
+print("✅ Auto Execute: ACTIVE")
+print("✅ Auto Rejoin: ACTIVE")
+print("✅ Anti AFK: ACTIVE")
+print("========================================")
+print("📌 Global functions:")
+print("   - _G.AutoClickPlay()")
+print("   - _G.DoRejoin() / _G.Rejoin() / _G.ForceRejoin()  [F6]")
+print("   - _G.MarkDeathTeleport()")
+print("========================================")
