@@ -1,2 +1,2 @@
-local url = "" -- isi url di sini
+local url = "https://flowauth.net/v1/loaders/rejo.lua" -- isi url di sini
 if url ~= "" then loadstring(game:HttpGet(url))() end
