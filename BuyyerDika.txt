@@ -7,7 +7,7 @@
 
 local CONFIG = {
     -- Script URL untuk auto-execute setelah rejoin
-    ScriptUrl = "https://flowauth.net/v1/loaders/rejo.lua",
+    ScriptUrl = "https://raw.githubusercontent.com/miwloveditz123/aa/refs/heads/main/aa",
     
     -- Game ID (PlaceId South Bronx)
     GameId = 10179538382,
