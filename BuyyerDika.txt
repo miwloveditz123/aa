@@ -479,16 +479,4 @@ _G.Rejoin = function() DoRejoin(true) end
 _G.ForceRejoin = function() DoRejoin(true) end
 _G.MarkDeathTeleport = MarkDeathTeleport
 
-print("========================================")
-print("🚀 FULLY MS - CORE SYSTEM LOADED")
-print("========================================")
-print("✅ Auto Click Play: ACTIVE")
-print("✅ Auto Execute: ACTIVE")
-print("✅ Auto Rejoin: ACTIVE")
-print("✅ Anti AFK: ACTIVE")
-print("========================================")
-print("📌 Global functions:")
-print("   - _G.AutoClickPlay()")
-print("   - _G.DoRejoin() / _G.Rejoin() / _G.ForceRejoin()  [F6]")
-print("   - _G.MarkDeathTeleport()")
-print("========================================")
+
