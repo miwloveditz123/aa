@@ -72,6 +72,7 @@ while attempts < maxAttempts do
     attempts = attempts + 1
     task.wait(1)
 end
+task.wait(10)
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 task.spawn(function()
@@ -205,7 +206,7 @@ end)
 if getgenv().FULL_AUTO then return end
 getgenv().FULL_AUTO = true
 
-getgenv().BUY_PACKAGES = getgenv().BUY_PACKAGES or 11
+getgenv().BUY_PACKAGES = getgenv().BUY_PACKAGES or 5
 getgenv().STOP_ALL = false
 
 local Players = game:GetService("Players")
@@ -1688,7 +1689,7 @@ end
 -- ==========================================
 do
     local hideNameOn = false
-    local HIDE_TAG_TEXT = "👑 DYYYKZZ.SCRIPT"
+    local HIDE_TAG_TEXT = "👑NovaExploit"
     local HIDE_TAG_COLOR = Color3.fromRGB(0, 255, 255)
     local savedNameColor = nil
     local function applyHideName(state)
